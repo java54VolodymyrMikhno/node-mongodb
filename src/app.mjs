@@ -51,11 +51,11 @@ collectionComments.aggregate([
         [
             {
               '$facet': {
-                'allMoviesAvgRatting': [
+                'avgRating': [
                   {
                     '$group': {
                       '_id': null, 
-                      'averageRating': {
+                      'average': {
                         '$avg': '$imdb.rating'
                       }
                     }
@@ -70,43 +70,45 @@ collectionComments.aggregate([
                   }, {
                     '$project': {
                       'title': 1, 
-                      'imdb.rating': 1, 
-                      'year': 1, 
-                      'genres': 1
+                      'imdb.rating': 1
                     }
                   }
                 ]
               }
             }, {
               '$project': {
-                'averageRating': {
-                  '$arrayElemAt': [
-                    '$allMoviesAvgRatting.averageRating', 0
-                  ]
-                }, 
-                'filteredMovies': 1
+                'movies': {
+                  '$map': {
+                    'input': '$filteredMovies', 
+                    'in': {
+                      'title': '$$this.title', 
+                      'rating': '$$this.imdb.rating', 
+                      'avgRating': {
+                        '$arrayElemAt': [
+                          '$avgRating.average', 0
+                        ]
+                      }
+                    }
+                  }
+                }
               }
             }, {
               '$unwind': {
-                'path': '$filteredMovies'
-              }
-            }, {
-              '$addFields': {
-                'filteredMovies.avgRating': '$averageRating'
+                'path': '$movies'
               }
             }, {
               '$match': {
                 '$expr': {
                   '$gt': [
-                    '$filteredMovies.imdb.rating', '$filteredMovies.avgRating'
+                    '$movies.rating', '$movies.avgRating'
                   ]
                 }
               }
             }, {
               '$project': {
-                'title': '$filteredMovies.title'
+                'title': '$movies.title'
               }
             }
-          ] 
+          ]
     ).toArray()
     .then(data => console.log('second', data));
