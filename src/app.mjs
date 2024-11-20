@@ -45,4 +45,68 @@ collectionComments.aggregate([
         }
     }
 ]).toArray()
-    .then(data => console.log('third', data));
+    .then(data => console.log('first', data));
+
+    collectionMovies.aggregate(
+        [
+            {
+              '$facet': {
+                'allMoviesAvgRatting': [
+                  {
+                    '$group': {
+                      '_id': null, 
+                      'averageRating': {
+                        '$avg': '$imdb.rating'
+                      }
+                    }
+                  }
+                ], 
+                'filteredMovies': [
+                  {
+                    '$match': {
+                      'year': 2010, 
+                      'genres': 'Comedy'
+                    }
+                  }, {
+                    '$project': {
+                      'title': 1, 
+                      'imdb.rating': 1, 
+                      'year': 1, 
+                      'genres': 1
+                    }
+                  }
+                ]
+              }
+            }, {
+              '$project': {
+                'averageRating': {
+                  '$arrayElemAt': [
+                    '$allMoviesAvgRatting.averageRating', 0
+                  ]
+                }, 
+                'filteredMovies': 1
+              }
+            }, {
+              '$unwind': {
+                'path': '$filteredMovies'
+              }
+            }, {
+              '$addFields': {
+                'filteredMovies.avgRating': '$averageRating'
+              }
+            }, {
+              '$match': {
+                '$expr': {
+                  '$gt': [
+                    '$filteredMovies.imdb.rating', '$filteredMovies.avgRating'
+                  ]
+                }
+              }
+            }, {
+              '$project': {
+                'title': '$filteredMovies.title'
+              }
+            }
+          ] 
+    ).toArray()
+    .then(data => console.log('second', data));
